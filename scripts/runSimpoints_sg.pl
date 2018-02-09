@@ -23,7 +23,7 @@ use List::Util 'max';
 $stats = "/home/diegojimenez/ECE523/stats";
 $outputDir = "/home/diegojimenez/ECE523/outputDir";
 $bin_dir = "/home/diegojimenez/ECE523/SPEC2006_ARM";
-$simpoint = "/home/diegojimenez/ECE523/SimPoint.3.2/bin/";
+$simpoint = "/home/diegojimenez/ECE523/SimPoint.3.2/bin";
 $arm = "/home/diegojimenez/ECE523/gem5/build/ARM";
 $configs = "/home/diegojimenez/ECE523/gem5/configs/spec2006";
 
@@ -47,15 +47,29 @@ $configs = "/home/diegojimenez/ECE523/gem5/configs/spec2006";
 # $fastForward = 300000000;
 # $maxInsts = 1000000000000;
 # $interval = 100000000;
-$fastForward = 3000000;
-$maxInsts = 10000000;
-$interval = 100000;
+
+## FF30m, Max10b, Intv10m
+# $fastForward = 30000000;
+# $maxInsts = 10000000000;
+# $interval = 10000000;
+
+
+$maxInsts = 100000000000;
+$interval = 100000000;
+$fastForward = 0;
 
 # $BANK_SIZE = 1024;
 
+# Cache config
+$cacheline_size=64;
+$l1d_size="32kB";
+$l1d_assoc=4;
+$l1i_size="32kB";
+$l1i_assoc=4;
 
 for($i = 0; $i < @benchmarks; $i++) {
-
+	$start = time;
+	
 	# NOTE: In config file, clock is in ticks. 1ns = 1000 ticks. Clock period = 1/freq
 	$cacheLineSize = $cacheline_size;
 
@@ -84,7 +98,7 @@ for($i = 0; $i < @benchmarks; $i++) {
 	$l1d_cfg = $l1d_name . "k" . $l1d_assoc . "w" . $cacheline_size;
 
 	$fastForward_name = "FF" . $fastForward / 1000000 . "m";
-	$maxInsts_name = "Max" . $maxInsts / 1000000000 . "t";
+	$maxInsts_name = "Max" . $maxInsts / 1000000000 . "b";
 	$interval_name = "Int" . $interval / 1000000 . "m";
 
 	$simp_cfg = $fastForward_name . "-" . $maxInsts_name . "-" . $interval_name;
@@ -105,23 +119,40 @@ for($i = 0; $i < @benchmarks; $i++) {
 	{	
 		system("/bin/mkdir $simpoint_dir");					# or die "Cannot create directory $!";
 	}
-
+	$wait = 1;
 	$statsFileName = "$sim_dir_name/$benchmarks[$i].txt";
-
+	$cache = "--caches --cacheline_size=$cacheline_size --l1d_size=$l1d_size --l1d_assoc=$l1d_assoc --l1i_size=$l1i_size --l1i_assoc=$l1i_assoc";
 	print "\n================ GENERATING BASIC BLOCK VECTORS FOR $benchmarks[$i] =================================\n";
 	# GENERATE SIMPOINTS
-	system("$arm/gem5.opt --stats-file=$statsFileName --outdir=$sim_dir_name --dump-config=$sim_dir_name/config.ini $configs/spec2006_se_sg.py --cpu-type=AtomicSimpleCPU --fastmem -n 1 --fast-forward=$fastForward  --mem-size=8192MB --maxinsts=$maxInsts --simpoint-profile --simpoint-interval=$interval --b $benchmarks[$i]");
+	# SimPoint
+	system("$arm/gem5.fast --stats-file=$statsFileName --outdir=$sim_dir_name --dump-config=$sim_dir_name/config.ini $configs/spec2006_se_sg.py --cpu-type=AtomicSimpleCPU --fastmem -n 1  --mem-size=8192MB --maxinsts=$maxInsts --simpoint-profile --simpoint-interval=$interval --b $benchmarks[$i]");
+	# Cache
+	# system("$arm/gem5.fast --stats-file=$statsFileName --outdir=$sim_dir_name --dump-config=$sim_dir_name/config.ini $configs/spec2006_se_sg.py --checkpoint-restore=6 --checkpoint-at-end $cache --cpu-type=AtomicSimpleCPU -n 1  --mem-size=8192MB --maxinsts=$maxInsts --b $benchmarks[$i]");
+	# print "\n$arm/gem5.fast --stats-file=$statsFileName --outdir=$sim_dir_name --dump-config=$sim_dir_name/config.ini $configs/spec2006_se_sg.py --cpu-type=AtomicSimpleCPU --fastmem -n 1 --fast-forward=$fastForward  --mem-size=8192MB --maxinsts=$maxInsts --simpoint-profile --simpoint-interval=$interval --b $benchmarks[$i]\n";
+	# --checkpoint-restore=1
+	# 
+	sleep($wait);
 	# print "\n\n ONE \n\n";
 	# EXTRACT simpoint.bb.gz
 	system("/bin/gunzip $sim_dir_name/simpoint.bb.gz");
+	print "\n/bin/gunzip $sim_dir_name/simpoint.bb.gz\n";
+	sleep($wait);
 	# print "\n\n TWO \n\n";
 	system("/bin/mv $sim_dir_name/simpoint.bb $simpoint_dir/$benchmarks[$i].bb");
+	print "\n/bin/mv $sim_dir_name/simpoint.bb $simpoint_dir/$benchmarks[$i].bb\n";
+	sleep($wait);
 	# print "\n\n THREE \n\n";
 	print "\n================ GENERATING SIMPOINTS FOR $benchmarks[$i] =================================\n";
 	# CREATE SIMPOINTS
-	system("$simpoint/simpoint -loadFVFile $simpoint_dir/$benchmarks[$i].bb -maxK 20 -saveSimpoints $simpoint_dir/$benchmarks[$i].simpoints -saveSimpointWeights $simpoint_dir/$benchmarks[$i].weights -saveLabels $simpoint_dir/$benchmarks[$i].labels");
+	system("$simpoint/simpoint -loadFVFile $simpoint_dir/$benchmarks[$i].bb -maxK 20 -saveSimpoints $simpoint_dir/$benchmarks[$i].simpoints -saveSimpointWeights $simpoint_dir/$benchmarks[$i].weights -saveLabels $simpoint_dir/$benchmarks[$i].labels > $simpoint_dir/simpoint.out");
+	print 	"\n$simpoint/simpoint -loadFVFile $simpoint_dir/$benchmarks[$i].bb -maxK 20 -saveSimpoints $simpoint_dir/$benchmarks[$i].simpoints -saveSimpointWeights $simpoint_dir/$benchmarks[$i].weights -saveLabels $simpoint_dir/$benchmarks[$i].labels > $simpoint_dir/simpoint.out\n";
+	sleep($wait);	
 	# print "\n\n FOUR \n\n";
-	system("echo \"Done with: $benchmarks[$i]\" | mailx -s \"Run Done\" diegojimenez\@email.arizona.edu");
+
+	$duration = time - $start;
+	system("echo \"Done with: $benchmarks[$i]. It took $duration s.\" | mailx -s \"Run Done\" diegojimenez\@email.arizona.edu");
+	system("echo \"Execution time: $duration s\n\" > $sim_dir_name/executionTime.txt");
+	print "Execution time: $duration s\n";
 }
 
 system("echo \"Done with all runs!\" | mailx -s \"Run Done\" diegojimenez\@email.arizona.edu");

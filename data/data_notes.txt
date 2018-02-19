@@ -1,0 +1,7 @@
+100 Billion Max Instruction Simpoint Results:
+	Num Intervals = 12988
+	Num Simpoints = 171
+
+1 Trillion Max Instruction Simpoint Results (SO FAR):
+	Num Intervals = 63611
+	Num Simpoints = 164

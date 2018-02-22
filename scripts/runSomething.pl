@@ -23,19 +23,17 @@ use List::Util 'max';
 $stats = "/home/diegojimenez/ECE523/stats";
 $outputDir = "/home/diegojimenez/ECE523/outputDir";
 $bin_dir = "/home/diegojimenez/ECE523/SPEC2006_ARM";
-$simpoint = "/home/diegojimenez/ECE523/SimPoint.3.2/bin";
 $arm = "/home/diegojimenez/ECE523/gem5/build/ARM";
 $configs = "/home/diegojimenez/ECE523/gem5/configs/spec2006";
+$labels = "/home/diegojimenez/ECE523/data/100b_simpoints/processed_simpoints";
 
 # ***********************************************************************
 # END CHANGES
 # ***********************************************************************
 
 # HETEROGENEOUS BENCHMARKS - same as homogeneous combinations
-# @benchmarks = ("leslie3d", "mcf", "astar", "bzip2", "gobmk", "libquantum", "milc", "namd", "xalancbmk", "omnetpp", "bwaves", "soplex", "hmmer", "h264ref", "calculix");
-@benchmarks = ("leslie3d", "mcf", "astar", "bzip2", "libquantum", "namd", "xalancbmk", "omnetpp", "bwaves", "soplex", "hmmer", "h264ref", "calculix", "gcc");
-# @benchmarks = ("leslie3d");
-
+@benchmarks = ("xalancbmk", "namd", "mcf", "libquantum", "hmmer", "calculix", "bzip2", "bwaves", "leslie3d", "h264ref", "gcc", "gamess", "astar");
+# @benchmarks = ("mcf", "namd");
 # $i = 14;
 
 # my ($l1i_size, $l1d_size, $l1i_assoc, $l1d_assoc, $cacheline_size, $clock, $i) = @ARGV;
@@ -54,105 +52,90 @@ $configs = "/home/diegojimenez/ECE523/gem5/configs/spec2006";
 # $interval = 10000000;
 
 
-$maxInsts = 100000000000;
-$interval = 100000000;
-$fastForward = 0;
+$maxInsts = 9000000;
+$fastForward = 100000000;
 
 # $BANK_SIZE = 1024;
 
-# Cache config
+# Simpoint Interval Length
+$interval = 10000000;
+
+# Default Cache config
 $cacheline_size=64;
 $l1d_size="32kB";
 $l1d_assoc=4;
 $l1i_size="32kB";
 $l1i_assoc=4;
-@cacheSize = ("2kB", "4kB", "8kB", "16kB", "32kB");
+
+# Exploration Space
+@cacheSize = ("2", "4", "8", "16", "32");
 @associativity = ("1", "2", "4");
 @lineSize = ("16", "32", "64");
-
-for ($size_d = 0; $size_d < @cacheSize; $size_d++) {
-	for ($assoc_d = 0; $assoc_d < @associativity; $assoc_d++) {
-		for ($line = 0; $line < @lineSize; $line++) {
-			for ($size_i = 0; $size_i < @cacheSize; $size_i++) {
-				for ($assoc_i = 0; $assoc_i < @associativity; $assoc_i++) {
-					$cache = "--caches --cacheline_size=$lineSize[$line] --l1d_size=$cacheSize[$size_d] --l1d_assoc=$associativity[$assoc_d] --l1i_size=$cacheSize[$size_i] --l1i_assoc=$associativity[$assoc_i]";
-					print $cache;
-				}	
-			}
-		}	
-	}	
-}
+# @cacheSize = ("2", "4");
+# @associativity = ("1");
+# @lineSize = ("16");
 
 for($i = 0; $i < @benchmarks; $i++) {
-	$start = time;
-
-	# NOTE: In config file, clock is in ticks. 1ns = 1000 ticks. Clock period = 1/freq
-	$cacheLineSize = $cacheline_size;
-
-	$clock0 = $clock/1000 . "GHz";
-	$l1isize0 = $l1i_size/1024 . "kB";
-	$l1iassoc0 = $l1i_assoc;
-	$l1dsize0 = $l1d_size/1024 . "kB";
-	$l1dassoc0 = $l1d_assoc;
-
-	$l2size = $l2_size/1024 . "MB";
-	$l2assoc = $l2_assoc;
-
-
-	# CPU 1
-	$clock1 = $clock0;
-	$l1isize1 = $l1isize0;
-	$l1iassoc1 = $l1iassoc0;
-	$l1dsize1 = $l1dsize0;
-	$l1dassoc1 = $l1dassoc0;
-
-	# CREATE NAMES
-	$l1i_name = $l1i_size/1024;
-	$l1d_name = $l1d_size/1024;
-
-	$l1i_cfg = $l1i_name . "k" . $l1i_assoc . "w" . $cacheline_size;
-	$l1d_cfg = $l1d_name . "k" . $l1d_assoc . "w" . $cacheline_size;
-
-	$fastForward_name = "FF" . $fastForward / 1000000 . "m";
-	$maxInsts_name = "Max" . $maxInsts / 1000000000 . "b";
-	$interval_name = "Int" . $interval / 1000000 . "m";
-
-	$simp_cfg = $fastForward_name . "-" . $maxInsts_name . "-" . $interval_name;
-
-	# create simulation directory
-	if(!(-d "$stats/$benchmarks[$i]"))
+	print "\n================================= STARTING $benchmarks[$i] =================================\n";
+	$checkpoint_dir = "$stats/$benchmarks[$i]";
+	if(!(-d "$checkpoint_dir"))
 	{
-		system("/bin/mkdir $stats/$benchmarks[$i]");
+		system("/bin/mkdir $checkpoint_dir");
 	}
-	# $sim_dir_name = "$stats/$benchmarks[$i]";
-	$sim_dir_name = "$stats/$benchmarks[$i]/$simp_cfg";		#/$l1i_cfg-$l1d_cfg-$clock0";
-	if(!(-d "$sim_dir_name"))
-	{
-		system("/bin/mkdir $sim_dir_name");
-	}
-	$simpoint_dir = "$sim_dir_name/simpoints";
-	if(!(-d "$simpoint_dir"))
-	{	
-		system("/bin/mkdir $simpoint_dir");					# or die "Cannot create directory $!";
-	}
-	$wait = 1;
-	$statsFileName = "$sim_dir_name/$benchmarks[$i].txt";
-	$cache = "--caches --cacheline_size=$cacheline_size --l1d_size=$l1d_size --l1d_assoc=$l1d_assoc --l1i_size=$l1i_size --l1i_assoc=$l1i_assoc";
-	print "\n================ GENERATING BASIC BLOCK VECTORS FOR $benchmarks[$i] =================================\n";
-	# GENERATE SIMPOINTS
-	# SimPoint
-#	system("$arm/gem5.fast --stats-file=$statsFileName --outdir=$sim_dir_name --dump-config=$sim_dir_name/config.ini $configs/spec2006_se_sg.py --cpu-type=AtomicSimpleCPU --fastmem -n 1  --mem-size=8192MB --maxinsts=$maxInsts --simpoint-profile --simpoint-interval=$interval --b $benchmarks[$i]");
-	# Cache
-	# system("$arm/gem5.fast --stats-file=$statsFileName --outdir=$sim_dir_name --dump-config=$sim_dir_name/config.ini $configs/spec2006_se_sg.py --checkpoint-restore=6 --checkpoint-at-end $cache --cpu-type=AtomicSimpleCPU -n 1  --mem-size=8192MB --maxinsts=$maxInsts --b $benchmarks[$i]");
-	# print "\n$arm/gem5.fast --stats-file=$statsFileName --outdir=$sim_dir_name --dump-config=$sim_dir_name/config.ini $configs/spec2006_se_sg.py --cpu-type=AtomicSimpleCPU --fastmem -n 1 --fast-forward=$fastForward  --mem-size=8192MB --maxinsts=$maxInsts --simpoint-profile --simpoint-interval=$interval --b $benchmarks[$i]\n";
-	# --checkpoint-restore=1
 
-	print "\n================ GENERATING SIMPOINTS FOR $benchmarks[$i] =================================\n";
+	$labelBench = "$labels/$benchmarks[$i].simpoints";
+	print "$labelBench\n";
+	open(READ_SIMPOINTS, $labelBench) or die "Could not open file '$labelBench' $!";
+	@simpoint_lines = <READ_SIMPOINTS>;
+	for ($j = 0; $j < @simpoint_lines; $j++){
+		@temp = split(' ', $simpoint_lines[$j]);
+		$simpoint = $temp[0];
+		$startInst = $simpoint * $interval;
+		$sim_dir_name = "$stats/$benchmarks[$i]/simpoint_$simpoint";
+		if(!(-d "$sim_dir_name"))
+		{
+			system("/bin/mkdir $sim_dir_name");
+		}
+		print "\n================================= USING SIMPOINT $startInst =================================\n";
+		$statsFileName = "$sim_dir_name/$benchmarks[$i].txt";
+		$cache = "--caches --cacheline_size=$cacheline_size --l1d_size=$l1d_size --l1d_assoc=$l1d_assoc --l1i_size=$l1i_size --l1i_assoc=$l1i_assoc";
+		$run = "$arm/gem5.fast --stats-file=$statsFileName --outdir=$sim_dir_name --dump-config=$sim_dir_name/config.ini $configs/spec2006_se_sg.py  --checkpoint-at-end --checkpoint-dir=$checkpoint_dir $cache --cpu-type=AtomicSimpleCPU -n 1 --mem-size=8192MB --maxinsts=$startInst --b $benchmarks[$i]";
+		# print "$run\n";
+		system("$run");
+		for ($line = 0; $line < @lineSize; $line++) {
+			for ($size_d = 0; $size_d < @cacheSize; $size_d++) {
+				for ($assoc_d = 0; $assoc_d < @associativity; $assoc_d++) {
+					for ($size_i = 0; $size_i < @cacheSize; $size_i++) {
+						for ($assoc_i = 0; $assoc_i < @associativity; $assoc_i++) {
+							if ($cacheSize[$size_d] / 2 < $associativity[$assoc_d] || $cacheSize[$size_i] / 2 < $associativity[$assoc_i]){
+								next;
+							}
+							$l1i_cfg = $cacheSize[$size_i] . "kB" . $associativity[$assoc_i] . "w" . $lineSize[$line];
+							$l1d_cfg = $cacheSize[$size_d] . "kB" . $associativity[$assoc_d] . "w" . $lineSize[$line];
+							$sim_dir_name = "$stats/$benchmarks[$i]/simpoint_$simpoint/$l1i_cfg-$l1d_cfg";
+							if(!(-d "$sim_dir_name"))
+							{
+								print "$sim_dir_name\n";
+								system("/bin/mkdir $sim_dir_name");
+							}
 
-	$duration = time - $start;
-	# system("echo \"Done with: $benchmarks[$i]. It took $duration s.\" | mailx -s \"Run Done\" diegojimenez\@email.arizona.edu");
-	# system("echo \"Execution time: $duration s\n\" > $sim_dir_name/executionTime.txt");
-	print "Execution time: $duration s\n";
+							$cache = "--caches --cacheline_size=$lineSize[$line] --l1d_size=$cacheSize[$size_d]kB --l1d_assoc=$associativity[$assoc_d] --l1i_size=$cacheSize[$size_i]kB --l1i_assoc=$associativity[$assoc_i]";
+							
+							$statsFileName = "$sim_dir_name/$benchmarks[$i].txt";
+							$run = "$arm/gem5.fast --stats-file=$statsFileName --outdir=$sim_dir_name --dump-config=$sim_dir_name/config.ini $configs/spec2006_se_sg.py --checkpoint-restore=1 --checkpoint-dir=$checkpoint_dir $cache --cpu-type=AtomicSimpleCPU -n 1 --mem-size=8192MB --maxinsts=$maxInsts --b $benchmarks[$i]\n\n";
+							# print "$run\n";
+							system("$run");
+						}	
+					}
+				}	
+			}	
+		}
+		$run = "rm -r $checkpoint_dir/cpt.*";
+		# print "$run\n";
+		system($run);
+	}
+	print "\n\n";
+	close READ_SIMPOINTS;
 }
 
-# system("echo \"Done with all runs!\" | mailx -s \"Run Done\" diegojimenez\@email.arizona.edu");
+

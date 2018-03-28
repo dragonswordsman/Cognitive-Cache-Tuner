@@ -1,78 +1,73 @@
 #!/usr/bin/env python2
-import numpy as np
-import os
 
-path = "/Users/diegojimenez/OneDrive/School/Senior/Semester2/ECE 523/Cognitive-Cache-Tuner/data/100b_simpoints"
+def fileParser(path, labelPath, outputDir):
+    import numpy as np
+    import os
 
-outputDir = path + "/output/"
-if not os.path.exists(outputDir):
-    os.makedirs(outputDir)
-    
-benchmark = ["mcf"]
-
-for bench in benchmark:
+    if not os.path.exists(outputDir):
+        os.makedirs(outputDir)
+        
     features = 0
-    n = 0
     data = {}
-    fileName = path + "/profiling/" + bench + ".txt"
-    f = open(fileName, "r")
-    for line in f: 
-        line = line[:-1]
-        if not line:
-            continue
-        if "Begin Simulation Statistics" in line:
-            n = n + 1
-            continue
-        if "End Simulation Statistics" in line:
-            continue
-        
-        split = line.split()
-        if len(split) > 0 and split[0] not in data:
-            data[split[0]] = features
-    #        print "%d %s" % (features, split[0])
-            features = features + 1    
-    f.close()
-    
-    f = open(fileName, "r")
-    j = 0
-    X = np.zeros((n, features))
-    for line in f: 
-        line = line[:-1]
-        split = line.split()
-    
-        if not line:
-            continue
-        if "Begin Simulation Statistics" in line:
-            continue
-        if "End Simulation Statistics" in line:
-            j = j + 1
-            continue
-        
-        X[j, data[split[0]]] = float(split[1])
-    
-    f.close()
-    
-    # Get rid of the last data set since it is invalid
-    X = X[:-1, :]
-#    print X
-    
-    Y = []
-    fileName = path + "/labels/" + bench + ".labels"
-    f = open(fileName, "r")
-    for line in f:
-        split = line.split()
-        Y.append(int(split[0]))
-    Y = np.array(Y).reshape((len(Y), 1))
-#    print Y
-    
-    
-    n = min(X.shape[0], Y.shape[0])
-    X = X[:n, :]
-    Y = Y[:n]
-    out = np.hstack((X, Y))
-    fileName = path + "/output/" + bench + ".csv"
-    np.savetxt(fileName, out, delimiter=',')
-    
+    i = 0
+    for bench in os.listdir(path):
+        n = 0
+        fileName = path + "/" + bench + "/32k4w64-32k4w64-1.9GHz/" + bench + ".txt"
+        f = open(fileName, "r")
+        for line in f: 
+            line = line[:-1]
+            if not line:
+                continue
+            if "Begin Simulation Statistics" in line:
+                n = n + 1
+                continue
+            if "End Simulation Statistics" in line:
+                continue
             
-print "Done"
+            split = line.split()
+            if len(split) > 0 and split[0] not in data:
+                data[split[0]] = features
+                features = features + 1    
+        f.close()
+        i = i + 1
+    
+    out = []
+    for bench in os.listdir(path):
+        fileName = path + "/" + bench + "/32k4w64-32k4w64-1.9GHz/" + bench + ".txt"
+        f = open(fileName, "r")
+        X = np.zeros((n, features))
+        j = 0
+        for line in f: 
+            line = line[:-1]
+            split = line.split()
+        
+            if not line:
+                continue
+            if "Begin Simulation Statistics" in line:
+                continue
+            if "End Simulation Statistics" in line:
+                j = j + 1
+                continue
+            if (j < n):
+                X[j, data[split[0]]] = float(split[1])
+        
+        f.close()
+        
+        # Get rid of the last data set since it is invalid
+        X = X[:-1, :]
+        
+        Y = []
+        fileName = labelPath + "/" + bench + ".labels"
+        f = open(fileName, "r")
+        for line in f:
+            split = line.split()
+            Y.append(bench + "_" + split[0])
+        
+        n = min(X.shape[0], len(Y))
+        X = X[:n, :]
+        Y = Y[:n]
+        out.append([bench, X, Y])
+                
+    print "Done with file parser"
+    return out
   

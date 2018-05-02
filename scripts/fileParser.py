@@ -10,6 +10,7 @@ def fileParser(path, labelPath, outputDir):
     features = 0
     data = {}
     i = 0
+    num = {}
     for bench in os.listdir(path):
         n = 0
         fileName = path + "/" + bench + "/32k4w64-32k4w64-1.9GHz/" + bench + ".txt"
@@ -29,13 +30,15 @@ def fileParser(path, labelPath, outputDir):
                 data[split[0]] = features
                 features = features + 1    
         f.close()
+        num[bench] = n
         i = i + 1
-    
+
     out = []
     for bench in os.listdir(path):
         fileName = path + "/" + bench + "/32k4w64-32k4w64-1.9GHz/" + bench + ".txt"
         f = open(fileName, "r")
-        X = np.zeros((n, features))
+        
+        X = np.zeros((num[bench], features))
         j = 0
         for line in f: 
             line = line[:-1]
@@ -63,11 +66,11 @@ def fileParser(path, labelPath, outputDir):
             split = line.split()
             Y.append(bench + "_" + split[0])
         
-        n = min(X.shape[0], len(Y))
-        X = X[:n, :]
-        Y = Y[:n]
+        nn = min(X.shape[0], len(Y))
+        X = X[:nn, :]
+        Y = Y[:nn]
         out.append([bench, X, Y])
-                
-    print "Done with file parser"
-    return out
+        
+    print("Done with file parser")
+    return list(data.keys()), out
   

@@ -39,7 +39,7 @@ from keras.utils import np_utils
 #DATASET_PATH = '/Users/Sam/Desktop/ECE523/Cognitive-Cache-Tuner/data/'
 DATASET_PATH =   '/Users/diegojimenez/OneDrive/School/Senior/Semester2/ECE 523/Cognitive-Cache-Tuner/data/10b_simpoints/'
 BENCHMARK_PATH = '/Users/diegojimenez/OneDrive/School/Senior/Semester2/ECE 523/Cognitive-Cache-Tuner/data/10b_simpoints/output/'
-RAWDATA_PATH =   '/Users/diegojimenez/OneDrive/School/Senior/Semester2/ECE 523/Cognitive-Cache-Tuner/data/mcpat/'
+#RAWDATA_PATH =   '/Users/diegojimenez/OneDrive/School/Senior/Semester2/ECE 523/Cognitive-Cache-Tuner/data/mcpat/'
 LABEL_PATH =     '/Users/diegojimenez/OneDrive/School/Senior/Semester2/ECE 523/Cognitive-Cache-Tuner/data/10b_simpoints/labels/'
 
 def generate_data(filename):

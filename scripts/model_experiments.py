@@ -616,8 +616,7 @@ if __name__ == '__main__':
 
 
 
-#    plotClassifierComparison(X_train, Y_train, X_test, Y_test)
-#    
+    plotClassifierComparison(X_train, Y_train, X_test, Y_test)
     
     
     c = RandomForestClassifier(max_depth=14, n_estimators=15, max_features=6)
@@ -649,7 +648,7 @@ if __name__ == '__main__':
         
     
     
-#    plotNumberFeaturesComparison(range(2, 50), classifiers, names)
+    plotNumberFeaturesComparison(range(2, 50), classifiers, names)
 
 
     data, labels, feature_names, edp = generate_data(DATASET_PATH+'master.csv')
